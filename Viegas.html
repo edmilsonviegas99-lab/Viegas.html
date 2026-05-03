@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Lojas Viegas - Sistema Multiusuário</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+.login-tela { display: flex; justify-content: center; align-items: center; height: 100vh; }
+.login-box { background: #1e293b; padding: 40px; border-radius: 12px; width: 350px; }
+.login-box h2 { color: #38bdf8; margin-bottom: 20px; text-align: center; }
+    input, select { padding: 10px; margin: 5px 0 15px 0; background: #334155; border: 1px solid #475569; color: #e2e8f0; border-radius: 4px; width: 100%; }
+    button { background: #38bdf8; color: #0f172a; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+.app { display: none; }
+.app.ativo { display: flex; }
+.sidebar { width: 220px; background: #1e293b; height: 100vh; padding: 20px; position: fixed; }
+.sidebar h2 { color: #38bdf8; margin-bottom: 10px; }
+.user-info { font-size: 12px; color: #94a3b8; margin-bottom: 20px; }
+.sidebar button { width: 100%; padding: 12px; margin: 5px 0; background: #334155; border: none; color: #e2e8f0; text-align: left; cursor: pointer; border-radius: 6px; }
+.sidebar button.ativo { background: #38bdf8; color: #0f172a; font-weight: bold; }
+.btn-sair { background: #7f1d1d; margin-top: 30px; }
+.main { margin-left: 220px; padding: 30px; width: calc(100% - 220px); }
+.aba { display: none; }
+.aba.ativa { display: block; }
+    h1 { margin-bottom: 20px; }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+.card { background: #1e293b; padding: 20px; border-radius: 8px; }
+.card h3 { color: #94a3b8; font-size: 14px; }
+.card p { font-size: 24px; font-weight: bold; color: #38bdf8; margin-top: 8px; }
+    table { width: 100%; background: #1e293b; border-collapse: collapse; margin-top: 20px; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+    th { background: #334155; }
+.btn-pequeno { padding: 5px 10px; font-size: 12px; margin: 0 2px; cursor: pointer; border: none; border-radius: 4px; }
+.btn-editar { background: #eab308; color: #0f172a; }
+.btn-excluir { background: #ef4444; color: white; }
+.btn-imprimir { background: #0ea5e9; color: white; }
+.btn-turno { background: #16a34a; color: white; padding: 15px; font-size: 16px; margin-top: 20px; }
+.fechado { background: #7f1d1d!important; cursor: not-allowed!important; }
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; }
+.badge-admin { background: #7c3aed; }
+.badge-func { background: #0891b2; }
+.aviso-turno { padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+.turno-fechado { background: #7f1d1d; }
+.turno-aberto { background: #166534; }
+  @media print {
+    body * { visibility: hidden; }
+.recibo-impressao,.recibo-impressao * { visibility: visible; }
+.recibo-impressao { position: absolute; left: 0; top: 0; width: 100%; }
+  }
+  </style>
+</head>
+<body>
+  <div id="loginTela" class="login-tela">
+    <div class="login-box">
+      <h2>Lojas Viegas</h2>
+      <input type="text" id="loginUser" placeholder="Usuário">
+      <input type="password" id="loginSenha" placeholder="Senha">
+      <button onclick="fazerLogin()">Entrar</button>
+      <p style="font-size:11px; color:#64748b; margin-top:20px; text-align:center;">
+        
+          <!--Admin: admin / admin123-->
+      </p>
+    </div>
+  </div>
+
+  <div id="app" class="app">
+    <div class="sidebar">
+      <h2>Lojas Viegas</h2>
+      <div class="user-info">
+        Logado: <span id="nomeUsuario"></span><br>
+        <span id="tipoUsuario"></span><br>
+        Turno: <span id="statusTurnoUser" style="font-weight:bold;"></span>
+      </div>
+      <button onclick="abrirAba('dashboard', this)" class="ativo">Painel Principal</button>
+      <button onclick="abrirAba('produtos', this)" id="btnProdutos">Produtos</button>
+      <button onclick="abrirAba('vendas', this)">Nova Venda</button>
+      <button onclick="abrirAba('clientes', this)">Clientes</button>
+      <button onclick="abrirAba('relatorios', this)">Relatórios</button>
+      <button onclick="abrirAba('funcionarios', this)" id="btnFuncionarios" style="display:none;">Funcionários</button>
+      <button onclick="abrirAba('turno', this)" id="btnTurno">Meu Turno</button>
+      <button class="btn-sair" onclick="sair()">Sair / Trocar Conta</button>
+    </div>
+
+    <div class="main">
+      <div id="dashboard" class="aba ativa">
+        <h1>Painel Principal</h1>
+        <div id="avisoTurno"></div>
+        <div class="cards">
+          <div class="card"><h3>Faturamento Total</h3><p id="totalFaturado">0,00 Kz</p></div>
+          <div class="card"><h3>Lucro Total</h3><p id="totalLucro">0,00 Kz</p></div>
+          <div class="card"><h3>Produtos em Estoque</h3><p id="totalEstoque">0</p></div>
+          <div class="card"><h3>Vendas Hoje</h3><p id="vendasHoje">0</p></div>
+        </div>
+      </div>
+
+      <div id="produtos" class="aba">
+        <h1>Gerenciar Produtos</h1>
+        <div class="grid-2">
+          <div>
+            <input type="hidden" id="produtoId">
+            <input type="text" id="nomeProduto" placeholder="Nome do produto">
+            <input type="number" id="precoCusto" placeholder="Preço de custo">
+            <input type="number" id="precoVenda" placeholder="Preço de venda">
+            <input type="number" id="qtdEstoque" placeholder="Quantidade em estoque">
+            <button onclick="salvarProduto()">Salvar Produto</button>
+          </div>
+        </div>
+        <table id="tabelaProdutos">
+          <thead><tr><th>Nome</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="vendas" class="aba">
+        <h1>Registrar Nova Venda</h1>
+        <select id="selectProduto"></select>
+        <input type="number" id="qtdVenda" placeholder="Quantidade" value="1" min="1">
+        <select id="selectCliente"></select>
+        <button onclick="registrarVenda()" id="btnFinalizarVenda">Finalizar Venda</button>
+        <table id="tabelaVendas">
+          <thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Total</th><th>Vendedor</th><th>Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="clientes" class="aba">
+        <h1>Clientes</h1>
+        <input type="text" id="nomeCliente" placeholder="Nome do cliente">
+        <input type="text" id="telCliente" placeholder="Telefone">
+        <button onclick="salvarCliente()">Salvar Cliente</button>
+        <table id="tabelaClientes">
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Total Comprado</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="relatorios" class="aba">
+        <h1>Relatórios</h1>
+        <h3 id="tituloRelatorio">Vendas por Funcionário - Hoje</h3>
+        <table id="tabelaVendasFunc">
+          <thead><tr><th>Funcionário</th><th>Qtd Vendas</th><th>Faturamento</th><th>Lucro</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <h3 style="margin-top:30px;">Produtos Mais Vendidos</h3>
+        <table id="tabelaMaisVendidos">
+          <thead><tr><th>Produto</th><th>Unidades Vendidas</th><th>Faturamento</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="funcionarios" class="aba">
+        <h1>Gerenciar Funcionários</h1>
+        <input type="hidden" id="funcId">
+        <input type="text" id="funcNome" placeholder="Nome completo">
+        <input type="text" id="funcUser" placeholder="Nome de usuário">
+        <input type="password" id="funcSenha" placeholder="Senha">
+        <select id="funcTipo">
+          <option value="funcionario">Funcionário</option>
+          <option value="admin">Administrador</option>
+        </select>
+        <button onclick="salvarFuncionario()">Salvar Funcionário</button>
+        <table id="tabelaFuncionarios">
+          <thead><tr><th>Nome</th><th>Usuário</th><th>Tipo</th><th>Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="turno" class="aba">
+        <h1>Controle de Turno</h1>
+        <p>Data: <span id="dataTurno"></span></p>
+        <p>Seu turno: <span id="statusMeuTurno" style="font-weight:bold; font-size:18px;"></span></p>
+        <div class="cards">
+          <div class="card"><h3>Vendido no Turno</h3><p id="turnoTotal">0,00 Kz</p></div>
+          <div class="card"><h3>Lucro do Turno</h3><p id="turnoLucro">0,00 Kz</p></div>
+          <div class="card"><h3>Nº de Vendas</h3><p id="turnoQtdVendas">0</p></div>
+        </div>
+        <button class="btn-turno" id="btnAbrirTurno" onclick="abrirTurno()">Abrir Meu Turno</button>
+        <button class="btn-turno fechado" id="btnFecharTurno" onclick="fecharTurno()">Fechar Meu Turno</button>
+        <div id="listaTurnosAdmin" style="display:none;">
+          <h3 style="margin-top:30px;">Turnos dos Funcionários Hoje</h3>
+          <table id="tabelaTurnos">
+            <thead><tr><th>Funcionário</th><th>Abertura</th><th>Fechamento</th><th>Status</th><th>Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reciboImpressao" class="recibo-impressao"></div>
+
+<script>
+let dados = JSON.parse(localStorage.getItem('lojasViegas')) || {
+  usuarios: [{ id: 1, nome: 'Admin', user: 'admin', senha: 'admin123', tipo: 'admin' }],
+  produtos: [], vendas: [], clientes: [], turnos: [],
+  usuarioLogado: null
+};
+
+function salvarDados() {
+  localStorage.setItem('lojasViegas', JSON.stringify(dados));
+  atualizarTudo();
+}
+
+function fazerLogin() {
+  const user = document.getElementById('loginUser').value;
+  const senha = document.getElementById('loginSenha').value;
+  const usuario = dados.usuarios.find(u => u.user === user && u.senha === senha);
+  if (!usuario) return alert('Usuário ou senha incorretos');
+
+  dados.usuarioLogado = usuario;
+  salvarDados();
+  iniciarApp();
+}
+
+function iniciarApp() {
+  document.getElementById('loginTela').style.display = 'none';
+  document.getElementById('app').classList.add('ativo');
+  document.getElementById('nomeUsuario').textContent = dados.usuarioLogado.nome;
+  document.getElementById('tipoUsuario').innerHTML = `<span class="badge ${dados.usuarioLogado.tipo === 'admin'? 'badge-admin' : 'badge-func'}">${dados.usuarioLogado.tipo}</span>`;
+
+  document.getElementById('btnFuncionarios').style.display = dados.usuarioLogado.tipo === 'admin'? 'block' : 'none';
+  document.getElementById('btnProdutos').style.display = dados.usuarioLogado.tipo === 'admin'? 'block' : 'none';
+  atualizarTudo();
+}
+
+function sair() {
+  dados.usuarioLogado = null;
+  salvarDados();
+  document.getElementById('app').classList.remove('ativo');
+  document.getElementById('loginTela').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginSenha').value = '';
+}
+
+function abrirAba(aba, btn) {
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('ativo'));
+  document.getElementById(aba).classList.add('ativa');
+  if (btn) btn.classList.add('ativo');
+  else if (event && event.target) event.target.classList.add('ativo');
+  if (aba === 'vendas') carregarSelects();
+  if (aba === 'turno') carregarTurno();
+}
+
+function verificarTurnoAberto(userId) {
+  const hoje = new Date().toLocaleDateString('pt-AO');
+  const turno = dados.turnos.find(t => t.data === hoje && t.userId === userId);
+  return turno && turno.aberto;
+}
+
+function abrirTurno() {
+  const hoje = new Date().toLocaleDateString('pt-AO');
+  if (verificarTurnoAberto(dados.usuarioLogado.id)) return alert('Teu turno já está aberto hoje');
+
+  dados.turnos.push({
+    id: Date.now(),
+    data: hoje,
+    userId: dados.usuarioLogado.id,
+    userNome: dados.usuarioLogado.nome,
+    aberto: true,
+    horaAbertura: new Date().toLocaleTimeString('pt-AO'),
+    horaFechamento: null
+  });
+  salvarDados();
+  alert('Turno aberto! Já podes vender.');
+}
+
+function fecharTurno() {
+  const hoje = new Date().toLocaleDateString('pt-AO');
+  const turno = dados.turnos.find(t => t.data === hoje && t.userId === dados.usuarioLogado.id && t.aberto);
+  if (!turno) return alert('Não tens turno aberto hoje');
+  if (!confirm('Confirma o fecho do teu turno? Não poderás vender mais hoje.')) return;
+
+  turno.aberto = false;
+  turno.horaFechamento = new Date().toLocaleTimeString('pt-AO');
+  salvarDados();
+  alert('Turno fechado com sucesso!');
+}
+
+function salvarProduto() {
+  if (dados.usuarioLogado.tipo!== 'admin') return alert('Só admin pode cadastrar produtos');
+  const id = document.getElementById('produtoId').value;
+  const produto = {
+    id: id? parseInt(id) : Date.now(),
+    nome: document.getElementById('nomeProduto').value,
+    custo: parseFloat(document.getElementById('precoCusto').value) || 0,
+    venda: parseFloat(document.getElementById('precoVenda').value),
+    estoque: parseInt(document.getElementById('qtdEstoque').value)
+  };
+  if (!produto.nome ||!produto.venda) return alert('Preenche nome e preço de venda');
+  if (id) dados.produtos[dados.produtos.findIndex(p => p.id == id)] = produto;
+  else dados.produtos.push(produto);
+  ['produtoId', 'nomeProduto', 'precoCusto', 'precoVenda', 'qtdEstoque'].forEach(i => document.getElementById(i).value = '');
+  salvarDados();
+}
+
+function editarProduto(id) {
+  const p = dados.produtos.find(p => p.id === id);
+  document.getElementById('produtoId').value = p.id;
+  document.getElementById('nomeProduto').value = p.nome;
+  document.getElementById('precoCusto').value = p.custo;
+  document.getElementById('precoVenda').value = p.venda;
+  document.getElementById('qtdEstoque').value = p.estoque;
+}
+
+function excluirProduto(id) {
+  if (confirm('Apagar este produto?')) {
+    dados.produtos = dados.produtos.filter(p => p.id!== id);
+    salvarDados();
+  }
+}
+
+function salvarCliente() {
+  const cliente = { id: Date.now(), nome: document.getElementById('nomeCliente').value, tel: document.getElementById('telCliente').value };
+  if (!cliente.nome) return alert('Nome obrigatório');
+  dados.clientes.push(cliente);
+  document.getElementById('nomeCliente').value = '';
+  document.getElementById('telCliente').value = '';
+  salvarDados();
+}
+
+function salvarFuncionario() {
+  if (dados.usuarioLogado.tipo!== 'admin') return;
+  const id = document.getElementById('funcId').value;
+  const func = {
+    id: id? parseInt(id) : Date.now(),
+    nome: document.getElementById('funcNome').value,
+    user: document.getElementById('funcUser').value,
+    senha: document.getElementById('funcSenha').value,
+    tipo: document.getElementById('funcTipo').value
+  };
+  if (!func.nome ||!func.user ||!func.senha) return alert('Preenche todos os campos');
+  if (dados.usuarios.some(u => u.user === func.user && u.id!= func.id)) return alert('Usuário já existe');
+  if (id) dados.usuarios[dados.usuarios.findIndex(u => u.id == id)] = func;
+  else dados.usuarios.push(func);
+  ['funcId', 'funcNome', 'funcUser', 'funcSenha'].forEach(i => document.getElementById(i).value = '');
+  salvarDados();
+}
+
+function editarFuncionario(id) {
+  const u = dados.usuarios.find(u => u.id === id);
+  document.getElementById('funcId').value = u.id;
+  document.getElementById('funcNome').value = u.nome;
+  document.getElementById('funcUser').value = u.user;
+  document.getElementById('funcSenha').value = u.senha;
+  document.getElementById('funcTipo').value = u.tipo;
+}
+
+function excluirFuncionario(id) {
+  if (id === 1) return alert('Não pode apagar o admin principal');
+  if (confirm('Apagar este funcionário?')) {
+    dados.usuarios = dados.usuarios.filter(u => u.id!== id);
+    salvarDados();
+  }
+}
+
+function carregarSelects() {
+  const selProd = document.getElementById('selectProduto');
+  const selCli = document.getElementById('selectCliente');
+  selProd.innerHTML = dados.produtos.filter(p => p.estoque > 0).map(p => `<option value="${p.id}">${p.nome} - ${p.estoque} un - ${p.venda} Kz</option>`).join('');
+  selCli.innerHTML = '<option value="0">Cliente Avulso</option>' + dados.clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
+function registrarVenda() {
+  if (!verificarTurnoAberto(dados.usuarioLogado.id)) return alert('Precisas abrir o teu turno primeiro na aba Meu Turno.');
+
+  const produtoId = parseInt(document.getElementById('selectProduto').value);
+  const clienteId = parseInt(document.getElementById('selectCliente').value);
+  const qtd = parseInt(document.getElementById('qtdVenda').value);
+  const produto = dados.produtos.find(p => p.id === produtoId);
+  if (!produto || produto.estoque < qtd) return alert('Estoque insuficiente');
+
+  produto.estoque -= qtd;
+  const venda = {
+    id: Date.now(),
+    data: new Date().toLocaleString('pt-AO'),
+    dataCurta: new Date().toLocaleDateString('pt-AO'),
+    produtoId, produtoNome: produto.nome,
+    clienteId, clienteNome: clienteId? dados.clientes.find(c => c.id === clienteId).nome : 'Avulso',
+    qtd, total: produto.venda * qtd, lucro: (produto.venda - produto.custo) * qtd,
+    vendedorId: dados.usuarioLogado.id, vendedorNome: dados.usuarioLogado.nome
+  };
+  dados.vendas.push(venda);
+  salvarDados();
+  if (confirm('Venda registrada! Deseja imprimir a fatura?')) imprimirRecibo(venda.id);
+}
+
+function imprimirRecibo(vendaId) {
+  const v = dados.vendas.find(v => v.id === vendaId);
+  const recibo = `
+    <div style="font-family: monospace; width: 300px; padding: 20px;">
+      <h2 style="text-align:center;">LOJAS VIEGAS</h2>
+      <p style="text-align:center;">FATURA / RECIBO</p>
+      <hr>
+      <p>Nº: ${v.id}</p>
+      <p>Data: ${v.data}</p>
+      <p>Vendedor: ${v.vendedorNome}</p>
+      <p>Cliente: ${v.clienteNome}</p>
+      <hr>
+      <p><b>${v.produtoNome}</b></p>
+      <p>Qtd: ${v.qtd} x ${(v.total/v.qtd).toLocaleString('pt-AO')} Kz</p>
+      <p style="font-size:18px;"><b>TOTAL: ${v.total.toLocaleString('pt-AO')} Kz</b></p>
+      <hr>
+      <p style="text-align:center; font-size:12px;">Obrigado pela preferência!</p>
+      <p style="text-align:center; font-size:10px;">Processado por computador</p>
+    </div>
+  `;
+  document.getElementById('reciboImpressao').innerHTML = recibo;
+  window.print();
+}
+
+function carregarTurno() {
+  const hoje = new Date().toLocaleDateString('pt-AO');
+  document.getElementById('dataTurno').textContent = hoje;
+  const meuTurno = dados.turnos.find(t => t.data === hoje && t.userId === dados.usuarioLogado.id);
+  const turnoAberto = meuTurno && meuTurno.aberto;
+
+  const vendasTurno = dados.vendas.filter(v => v.dataCurta === hoje && v.vendedorId === dados.usuarioLogado.id);
+  document.getElementById('turnoTotal').textContent = vendasTurno.reduce((s, v) => s + v.total, 0).toLocaleString('pt-AO') + ' Kz';
+  document.getElementById('turnoLucro').textContent = vendasTurno.reduce((s, v) => s + v.lucro, 0).toLocaleString('pt-AO') + ' Kz';
+  document.getElementById('turnoQtdVendas').textContent = vendasTurno.length;
+
+  const btnAbrir = document.getElementById('btnAbrirTurno');
+  const btnFechar = document.getElementById('btnFecharTurno');
+  
+  if (turnoAberto) {
+    document.getElementById('statusMeuTurno').textContent = 'ABERTO';
+    document.getElementById('statusMeuTurno').style.color = '#22c55e';
+    btnAbrir.disabled = true;
+    btnAbrir.classList.add('fechado');
+    btnFechar.disabled = false;
+    btnFechar.classList.remove('fechado');
+  } else {
+    document.getElementById('statusMeuTurno').textContent = 'FECHADO';
+    document.getElementById('statusMeuTurno').style.color = '#ef4444';
+    btnAbrir.disabled = false;
+    btnAbrir.classList.remove('fechado');
+    btnFechar.disabled = true;
+    btnFechar.classList.add('fechado');
+  }
+
+  if (dados.usuarioLogado.tipo === 'admin') {
+    document.getElementById('listaTurnosAdmin').style.display = 'block';
+    document.querySelector('#tabelaTurnos tbody').innerHTML = dados.turnos.filter(t => t.data === hoje).map(t => {
+      const vendasT = dados.vendas.filter(v => v.dataCurta === hoje && v.vendedorId === t.userId);
+      const totalT = vendasT.reduce((s, v) => s + v.total, 0);
+      return `<tr>
+        <td>${t.userNome}</td>
+        <td>${t.horaAbertura}</td>
+        <td>${t.horaFechamento || '-'}</td>
+        <td><span class="badge ${t.aberto? 'badge-func' : 'badge-admin'}">${t.aberto? 'Aberto' : 'Fechado'}</span></td>
+        <td>${totalT.toLocaleString('pt-AO')} Kz</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5">Nenhum turno aberto hoje</td></tr>';
+  }
+}
+
+function atualizarTudo() {
+  if (!dados.usuarioLogado) return;
+  const hoje = new Date().toLocaleDateString('pt-AO');
+  const turnoAberto = verificarTurnoAberto(dados.usuarioLogado.id);
+
+  if (!turnoAberto) {
+    document.getElementById('avisoTurno').innerHTML = '<div class="aviso-turno turno-fechado">⚠️ Teu turno está fechado. Abre o turno na aba Meu Turno para vender.</div>';
+    document.getElementById('btnFinalizarVenda').disabled = true;
+    document.getElementById('btnFinalizarVenda').classList.add('fechado');
+    document.getElementById('statusTurnoUser').textContent = 'FECHADO';
+    document.getElementById('statusTurnoUser').style.color = '#ef4444';
+  } else {
+    document.getElementById('avisoTurno').innerHTML = '<div class="aviso-turno turno-aberto">✅ Turno aberto. Pronto para vendas.</div>';
+    document.getElementById('btnFinalizarVenda').disabled = false;
+    document.getElementById('btnFinalizarVenda').classList.remove('fechado');
+    document.getElementById('statusTurnoUser').textContent = 'ABERTO';
+    document.getElementById('statusTurnoUser').style.color = '#22c55e';
+  }
+
+  const vendasFiltradas = dados.usuarioLogado.tipo === 'admin'? dados.vendas : dados.vendas.filter(v => v.vendedorId === dados.usuarioLogado.id);
+  const vendasHoje = vendasFiltradas.filter(v => v.dataCurta === hoje);
+
+  document.getElementById('totalFaturado').textContent = vendasFiltradas.reduce((s, v) => s + v.total, 0).toLocaleString('pt-AO') + ' Kz';
+  document.getElementById('totalLucro').textContent = vendasFiltradas.reduce((s, v) => s + v.lucro, 0).toLocaleString('pt-AO') + ' Kz';
+  document.getElementById('totalEstoque').textContent = dados.produtos.reduce((s, p) => s + p.estoque, 0);
+  document.getElementById('vendasHoje').textContent = vendasHoje.length;
+
+  document.querySelector('#tabelaProdutos tbody').innerHTML = dados.produtos.map(p => `
+    <tr><td>${p.nome}</td><td>${p.custo} Kz</td><td>${p.venda} Kz</td><td>${p.estoque}</td>
+      <td>
+        ${dados.usuarioLogado.tipo === 'admin'? `
+        <button class="btn-pequeno btn-editar" onclick="editarProduto(${p.id})">Editar</button>
+        <button class="btn-pequeno btn-excluir" onclick="excluirProduto(${p.id})">Excluir</button>` : '-'}
+      </td></tr>`).join('');
+
+  document.querySelector('#tabelaVendas tbody').innerHTML = vendasFiltradas.slice().reverse().map(v => `
+    <tr><td>${v.data}</td><td>${v.produtoNome}</td><td>${v.clienteNome}</td><td>${v.qtd}</td><td>${v.total} Kz</td><td>${v.vendedorNome}</td>
+    <td><button class="btn-pequeno btn-imprimir" onclick="imprimirRecibo(${v.id})">Imprimir</button></td></tr>
+  `).join('');
+
+  document.querySelector('#tabelaClientes tbody').innerHTML = dados.clientes.map(c => {
+    const total = dados.vendas.filter(v => v.clienteId === c.id).reduce((s, v) => s + v.total, 0);
+    return `<tr><td>${c.nome}</td><td>${c.tel}</td><td>${total} Kz</td></tr>`;
+  }).join('');
+
+  if (dados.usuarioLogado.tipo === 'admin') {
+    document.querySelector('#tabelaFuncionarios tbody').innerHTML = dados.usuarios.map(u => `
+      <tr><td>${u.nome}</td><td>${u.user}</td><span class="badge ${u.tipo === 'admin'? 'badge-admin' : 'badge-func'}">${u.tipo}</span></td>
+        <td>
+          <button class="btn-pequeno btn-editar" onclick="editarFuncionario(${u.id})">Editar</button>
+          ${u.id!== 1? `<button class="btn-pequeno btn-excluir" onclick="excluirFuncionario(${u.id})">Excluir</button>` : ''}
+        </td></tr>`).join('');
+
+    document.getElementById('tituloRelatorio').textContent = 'Vendas por Funcionário - Hoje';
+    const porFunc = {};
+    dados.vendas.filter(v => v.dataCurta === hoje).forEach(v => {
+      if (!porFunc[v.vendedorId]) porFunc[v.vendedorId] = { nome: v.vendedorNome, qtd: 0, fat: 0, lucro: 0 };
+      porFunc[v.vendedorId].qtd++;
+      porFunc[v.vendedorId].fat += v.total;
+      porFunc[v.vendedorId].lucro += v.lucro;
+    });
+    document.querySelector('#tabelaVendasFunc tbody').innerHTML = Object.values(porFunc).map(f => `
+      <tr><td>${f.nome}</td><td>${f.qtd}</td><td>${f.fat.toLocaleString('pt-AO')} Kz</td><td>${f.lucro.toLocaleString('pt-AO')} Kz</td></tr>
+    `).join('') || '<tr><td colspan="4">Nenhuma venda hoje</td></tr>';
+
+    const contagem = {};
+    dados.vendas.forEach(v => {
+      if (!contagem[v.produtoId]) contagem[v.produtoId] = { nome: v.produtoNome, qtd: 0, fat: 0 };
+      contagem[v.produtoId].qtd += v.qtd;
+      contagem[v.produtoId].fat += v.total;
+    });
+    const ranking = Object.values(contagem).sort((a, b) => b.qtd - a.qtd);
+    document.querySelector('#tabelaMaisVendidos tbody').innerHTML = ranking.map(r => `
+      <tr><td>${r.nome}</td><td>${r.qtd}</td><td>${r.fat} Kz</td></tr>
+    `).join('');
+  } else {
+    document.getElementById('tituloRelatorio').textContent = 'Minhas Vendas - Hoje';
+    const minhasVendas = dados.vendas.filter(v => v.dataCurta === hoje && v.vendedorId === dados.usuarioLogado.id);
+    const totalEu = minhasVendas.reduce((s, v) => s + v.total, 0);
+    const lucroEu = minhasVendas.reduce((s, v) => s + v.lucro, 0);
+    document.querySelector('#tabelaVendasFunc tbody').innerHTML = `
+      <tr><td>${dados.usuarioLogado.nome}</td><td>${minhasVendas.length}</td><td>${totalEu.toLocaleString('pt-AO')} Kz</td><td>${lucroEu.toLocaleString('pt-AO')} Kz</td></tr>
+    `;
+  }
+}
+
+if (dados.usuarioLogado) iniciarApp();
+else document.getElementById('loginTela').style.display = 'flex';
+
+atualizarTudo();
+</script>
+</body>
+</html>
